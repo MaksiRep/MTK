@@ -1,0 +1,54 @@
+import lingo/pegcode/driver;
+
+Exp ::= Add, Int, Mul, Div, Min, Var;
+	Add : (e1 : Exp, e2 : Exp);
+	Mul : (e1 : Exp, e2 : Exp);
+	Div : (e1 : Exp, e2 : Exp);
+	Min : (e1 : Exp, e2 : Exp);
+	Var : (e1 : string);
+	Int : (i : int);
+
+
+expTostring(e : Exp) -> string {
+	switch (e) {
+		Add(e1, e2): "(" + expTostring(e1) + " + " + expTostring(e2) + ")";
+		Mul(e1, e2): "(" + expTostring(e1) + " * " + expTostring(e2) + ")";
+		Div(e1, e2): "(" + expTostring(e1) + " / " + expTostring(e2) + ")";
+		Min(e1, e2): "(" + expTostring(e1) + " - " + expTostring(e2) + ")";
+		Var(name): name;
+		Int(val): i2s(val);
+	}
+}
+
+expToInt (e : Exp, var2intTree : Tree<string, int>) -> Maybe<int> {
+	switch (e) {
+		Add(e1, e2): maybeMap2(\l, r -> l + r)(expToInt(e1, var2intTree), expToInt(e2, var2intTree));
+		Min(e1, e2): maybeMap2(\l, r -> l - r)(expToInt(e1, var2intTree), expToInt(e2, var2intTree));
+		Mul(e1, e2): maybeMap2(\l, r -> l * r)(expToInt(e1, var2intTree), expToInt(e2, var2intTree));
+		Div(e1, e2): maybeMap2(\l, r -> l / r)(expToInt(e1, var2intTree), expToInt(e2, var2intTree));
+		Var(name): lookupTree(var2intTree, name);
+		Int(val): Some(val);
+	}
+}
+
+
+stringToExp(str : string) -> Exp {
+	e_gr = "#include Labs/6-7lab/mygrammar.lingo";
+	parsic(compilePegGrammar(e_gr), str, defaultPegActions);
+}
+
+
+main() {
+	expr_str = "(((a - b) * 2) / 3)";
+	println(expr_str);
+	ast = stringToExp(expr_str);
+	vars = pairs2tree([Pair("a", 1), Pair("b", 4)]);
+	switch (expToInt(ast, vars)) {
+		Some(var): println(i2s(var));
+		None(): println("None");
+	}
+	quit(0);
+
+}
+
+	

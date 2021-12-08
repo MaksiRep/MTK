@@ -1,0 +1,18 @@
+exp = sum | mul | div | min | var | int | degree | doub;
+
+
+sum = "(" ws exp:e1 ws "+" ws exp:e2 ws ")" { Add (:e1, :e2) } ;
+mul = "(" ws exp:e1 ws "*" ws exp:e2 ws ")" { Mul (:e1, :e2) } ;
+div = "(" ws exp:e1 ws "/" ws exp:e2 ws ")" { Div (:e1, :e2) } ;
+min = "(" ws exp:e1 ws "-" ws exp:e2 ws ")" { Min (:e1, :e2) } ;
+degree = "(" ws exp:e1 ws "^" ws exp:e2 ws ")" { Degree (:e1, :e2) } ;
+doub = "(" ws int$n ws "/" ws int$d ws ")" {Doub(s2i($n), s2i($d))};
+
+var = letter + $d { Var($d) };
+letter = 'a'-'z';
+
+int = digit + $d { Int (s2i($d)) } ;
+digit = '0'-'9';
+
+ws = ws_*;
+ws_ = ' ';

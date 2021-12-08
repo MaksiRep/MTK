@@ -1,0 +1,39 @@
+import material/material;
+
+main () {
+    array : [int] = [0, 9, 1, 3, 5, 6, 8, 9, 4, 7, 2, 3, 5];
+    println (inds(array, 5));
+    println (treeInds(array, 5));
+    quit(0);
+}
+
+inds(a : [int], m : int) -> [Pair<int, int>] {
+    foldi(a, [], \i, helpArray1, a_i -> {
+        foldi(a, helpArray1, \j, helpArray2, a_j -> {
+            if (a_i + a_j == m && j>i) {
+                concat(helpArray2, [Pair(i, j)]);
+            } else {
+                helpArray2;
+            }
+        });
+    });
+}
+
+treeInds(array : [int], m : int) -> [Pair<int, int>] {
+    
+	makedTr = foldi(array, makeTree(), \i, helpTree, n ->
+		switch (lookupTree(helpTree, n)) {
+			Some(ind): setTree(helpTree, n, concat(ind, [i]));
+			None(): setTree(helpTree, n, [i]);
+		});
+	foldi(array, [], \i, helpArray, n -> {
+		switch (lookupTree(makedTr, m - n)) {
+			Some(ind): concat(helpArray, map(ind, \j -> Pair(i, j)));
+			None(): helpArray;
+        }
+    });
+}
+
+
+
+

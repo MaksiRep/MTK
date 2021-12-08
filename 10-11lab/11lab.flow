@@ -1,0 +1,211 @@
+import lingo/pegcode/driver;
+
+vars = pairs2tree([Pair("a", s2i(getUrlParameter("a"))), Pair("b", s2i(getUrlParameter("b")))]);
+
+
+Exp ::= Add, Int, Mul, Div, Min, Degree, Doub, Var;
+	Add : (e1 : Exp, e2 : Exp);
+	Mul : (e1 : Exp, e2 : Exp);
+	Div : (e1 : Exp, e2 : Exp);
+	Min : (e1 : Exp, e2 : Exp);
+	Degree : (e1 : Exp, e2 : Exp);
+	Var : (e1 : string);
+	Int : (i : int);
+	Doub : (e1 : int, e2 : int);
+
+
+expTostring(e : Exp) -> string{
+	switch(e){
+        Add(e1, e2): "(" + expTostring(e1) + "+" + expTostring(e2) + ")";
+        Mul(e1, e2): "(" + expTostring(e1) + "*" + expTostring(e2) + ")";
+        Min(e1, e2): "(" + expTostring(e1) + "-" + expTostring(e2) + ")";
+        Div(e1, e2): "(" + expTostring(e1) + "/" + expTostring(e2) + ")";
+        Degree(e1, e2): "(" + expTostring(e1) + "^" + expTostring(e2) + ")";
+        Int(val): i2s(val);
+        Doub(a, b) : "(" + i2s(a) + "/" + i2s(b) + ")";
+		Var(var): var;
+	}
+}
+
+
+resToStr (e : Maybe<Doub>) -> string {
+	switch (e) {
+		Some(v): if (v.e2 == 1) {
+					i2s(v.e1)
+				 } else {
+					 i2s(v.e1) + "/" + i2s(v.e2);
+				 }
+		None(): {
+            "problems with args";
+        }
+	}
+}
+
+checkVar(mby : Maybe<Doub>) -> Doub {
+	switch (mby) {
+		Some(v): v;
+		None(): {
+            Doub(0,0);
+        }
+	}
+}
+
+expToDoub (e : Exp) -> Maybe<Doub> {
+	switch (e) {
+		Add(e1, e2): summExp (expToDoub(e1) ,  expToDoub(e2));
+		Mul(e1, e2): mulExp (expToDoub(e1) ,  expToDoub(e2));
+		Div(e1, e2): divExp (expToDoub(e1) ,  expToDoub(e2));
+		Min(e1, e2): minExp (expToDoub(e1) ,  expToDoub(e2));
+		Degree (e1, e2): degreeExp (expToDoub(e1) ,  expToDoub(e2));
+		Var (var): Some(Doub(either(lookupTree(vars, var), 0), 1));
+		Int(val): Some(Doub(val, 1));	
+		Doub(e1, e2): Some(Doub(e1, e2));
+	}
+}
+
+
+/*findVar (name : string ) -> Some<Doub> {
+	a = either(lookupTree(vars, name), 0);
+	Some(Doub(a, 1));
+}*/
+
+summExp(value1 : Maybe<Doub>, value2 : Maybe<Doub>) -> Maybe<Doub> {
+		x = checkVar(value1);
+        y = checkVar(value2);
+        topVal = x.e1 * y.e2 + y.e1 * x.e2;
+        botVal = x.e2 * y.e2;
+        Some(Doub(topVal, botVal));
+}
+
+minExp(value1 : Maybe<Doub>, value2 : Maybe<Doub>) -> Maybe<Doub> {
+		x = checkVar(value1);
+        y = checkVar(value2);
+        topVal = x.e1 * y.e2 - y.e1 * x.e2;
+        botVal = x.e2 * y.e2;
+        Some(Doub(topVal, botVal));
+}
+
+divExp(value1 : Maybe<Doub>, value2 : Maybe<Doub>) -> Maybe<Doub> {
+		x = checkVar(value1);
+        y = checkVar(value2);
+        topVal = x.e1 * y.e2 ;
+        botVal = x.e2 * y.e1;
+        Some(Doub(topVal, botVal));
+}
+
+mulExp(value1 : Maybe<Doub>, value2 : Maybe<Doub>) -> Maybe<Doub> {
+		x = checkVar(value1);
+        y = checkVar(value2);
+        topVal = x.e1 * y.e1 ;
+        botVal = x.e2 * y.e2;
+        Some(Doub(topVal, botVal));
+}
+
+degreeExp(value1 : Maybe<Doub>, value2 : Maybe<Doub>) -> Maybe<Doub> {
+		x = checkVar(value1);
+        y = checkVar(value2);
+        topVal = pow(x.e1, y.e1) ;
+        botVal = pow(x.e2, y.e1);
+        Some(Doub(topVal, botVal));
+}
+
+algDiff(e : Exp, v : string) -> Exp {
+	switch (e) {
+		Add(e1, e2): Add(algDiff(e1, v), algDiff(e2, v));
+		Min(e1, e2): Min(algDiff(e1, v), algDiff(e2, v));
+		Mul(e1, e2): Add(Mul(algDiff(e1, v), e2), Mul(e1, algDiff(e2, v)));
+		Div(e1, e2): Div( Min(Mul(algDiff(e1, v), e2), Mul(e1, algDiff(e2, v))), Mul(e2, e2));
+		Degree(e1, e2): Mul(e2, Degree(e1, Min(e2, algDiff(e1, v))));
+		Var(name): if (name == v) Int(1) else Int(0);
+		Int(val): Int(0);
+		Doub(e1, e2): Doub(0,1); 
+	}
+}
+
+
+
+algReduce(e : Exp) -> Exp {
+	is_const = \e1, c -> {
+		switch (e1) {
+			Int(v): v == c; 	
+			default: false;
+		}
+	}
+	is_zero = \e1 -> is_const(e1, 0);
+	is_one = \e1 -> is_const(e1, 1);
+	switch (e) {
+		Add(e1, e2): {
+			l_red = algReduce(e1);
+			r_red = algReduce(e2);
+			if (is_zero(l_red)) { // 0 + a
+				if (is_zero(r_red)) { Int(0) } else { r_red } // 0 + 0 else do 0 + a
+			} else if (is_zero(r_red)) { // a + 0
+				if (is_zero(l_red)) Int(0) else l_red // 0 + 0 else do a + 0
+			} else Add(l_red, r_red)
+		}
+		Min(e1, e2): {
+			l_red = algReduce(e1);
+			r_red = algReduce(e2);
+			if (is_zero(l_red)) { // 0 - a
+				if (is_zero(r_red)) Int(0) else Min(Int(0), r_red) // 0 - 0 else do 0 - a
+			} else if (is_zero(r_red)) { // a - 0
+				if (is_zero(l_red)) Int(0) else l_red // 0 - 0 else do a - 0
+			} else {
+				if (l_red == r_red) Int(0) else Min(l_red, r_red) // if 0 == 0 else do a - b
+			}
+		}
+		Mul(e1, e2): {
+			l_red = algReduce(e1);
+			r_red = algReduce(e2);
+			if (is_zero(l_red) || is_zero(r_red)) Int(0) else { // 0 * x || x * 0
+				if (is_one(l_red)) { // 1 * x
+					if (is_one(r_red)) Int(1) else r_red // 1 * 1
+				} else if (is_one(r_red)) { // x * 1
+					if (is_one(l_red)) Int(1) else l_red // 1 * 1
+				} else {
+					Mul(l_red, r_red) // a * b
+				}
+			}
+		}
+		Div(e1, e2): {
+			l_red = algReduce(e1);
+			r_red = algReduce(e2);
+			if (is_zero(l_red)) { // 0/a
+				Int(0)
+			} else if (l_red == r_red) Int(1) // b == a
+			 else Div(l_red, r_red) // b/a
+		}
+		Var(name): e; // e
+		Int(val): e; // e
+		Doub(e1, e2): e; //e
+		Degree(e1, e2): {
+			l_red = algReduce(e1);
+			r_red = algReduce(e2);
+			if (is_zero(r_red))  {Int(1) } else  { // x ^ 0
+				Degree(l_red, r_red) //else a^b
+			}
+		}
+	}
+}
+			
+stringToExp(str : string) -> Exp {
+	e_gr = "#include Labs/10-11lab/grammar.lingo";
+	parsic(compilePegGrammar(e_gr), str, defaultPegActions);
+}
+
+
+main() {
+	expr_str = "(((b/a) ^ 2 )- 7)";
+	println(expr_str);
+	ast = stringToExp(expr_str);
+	println(resToStr(expToDoub(ast)));
+	expr1 = "(x ^ 2)";
+	expr1_diff = expTostring(algDiff(stringToExp(expr1), "x"));
+	println(expr1 + "' = " + expTostring(algReduce(stringToExp(expr1_diff))));
+	expr2 = "(x * (2 + 4))";
+	println(expr2 + " = " + expTostring(algReduce(stringToExp(expr2))));
+	quit(0);
+
+}
+
+	

@@ -1,0 +1,43 @@
+import lingo/pegcode/driver;
+
+Exp ::= Add, Int, Mul, Div, Min;
+	Add : (e1 : Exp, e2 : Exp);
+	Mul : (e1 : Exp, e2 : Exp);
+	Div : (e1 : Exp, e2 : Exp);
+	Min : (e1 : Exp, e2 : Exp);
+	Int : (i : int);
+
+
+expTostring(e : Exp) -> string {
+	switch (e) {
+		Add(e1, e2): "(" + expTostring(e1) + " + " + expTostring(e2) + ")";
+		Mul(e1, e2): "(" + expTostring(e1) + " * " + expTostring(e2) + ")";
+		Div(e1, e2): "(" + expTostring(e1) + " / " + expTostring(e2) + ")";
+		Min(e1, e2): "(" + expTostring(e1) + " - " + expTostring(e2) + ")";
+		Int(val): i2s(val);
+	}
+}
+
+expToInt(e : Exp) -> int {
+	switch (e) {
+		Add(e1, e2): expToInt(e1) + expToInt(e2);
+		Mul(e1, e2): expToInt(e1) * expToInt(e2);
+		Div(e1, e2): expToInt(e1) /  expToInt(e2);
+		Min(e1, e2): expToInt(e1) - expToInt(e2) ;
+		Int(val): val;
+	}
+}
+
+
+main() {
+	expr_str = "(((4 + 3) * 5) + 5)";
+	println(expr_str);
+	ast = parsic(compilePegGrammar("#include Labs/5lab/mygrammar.lingo"), expr_str, defaultPegActions);
+	println (ast);
+	println(expTostring(ast));
+	println(expToInt(ast));
+	quit(0);
+
+}
+
+	

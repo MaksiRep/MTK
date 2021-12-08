@@ -1,0 +1,9 @@
+import material/material;
+
+main() {
+	array : [int] = [1,2,3];
+	println(array);
+
+	println(map(array, i2s));
+	quit(0);
+}

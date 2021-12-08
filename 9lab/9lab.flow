@@ -1,0 +1,129 @@
+import lingo/pegcode/driver;
+
+vars = pairs2tree([Pair("a", 1), Pair("b", 2)]);
+
+
+Exp ::= Add, Int, Mul, Div, Min, Degree, Doub, Var;
+	Add : (e1 : Exp, e2 : Exp);
+	Mul : (e1 : Exp, e2 : Exp);
+	Div : (e1 : Exp, e2 : Exp);
+	Min : (e1 : Exp, e2 : Exp);
+	Degree : (e1 : Exp, e2 : Exp);
+	Var : (e1 : string);
+	Int : (i : int);
+	Doub : (e1 : int, e2 : int);
+
+
+expTostring(e : Exp) -> string{
+	switch(e){
+        Add(e1, e2): "(" + expTostring(e1) + "+" + expTostring(e2) + ")";
+        Mul(e1, e2): "(" + expTostring(e1) + "*" + expTostring(e2) + ")";
+        Min(e1, e2): "(" + expTostring(e1) + "-" + expTostring(e2) + ")";
+        Div(e1, e2): "(" + expTostring(e1) + "/" + expTostring(e2) + ")";
+        Degree(e1, e2): "(" + expTostring(e1) + "^" + expTostring(e2) + ")";
+        Int(val): i2s(val);
+        Doub(a, b) : "(" + i2s(a) + "/" + i2s(b) + ")";
+		Var(var): var;
+	}
+}
+
+
+resToStr (e : Maybe<Doub>) -> string {
+	switch (e) {
+		Some(v): if (v.e2 == 1) {
+					i2s(v.e1)
+				 } else {
+					 i2s(v.e1) + "/" + i2s(v.e2);
+				 }
+		None(): {
+            "problems with args";
+        }
+	}
+}
+
+checkVar(mby : Maybe<Doub>) -> Doub {
+	switch (mby) {
+		Some(v): v;
+		None(): {
+            Doub(0,0);
+        }
+	}
+}
+
+expToDoub (e : Exp) -> Maybe<Doub> {
+	switch (e) {
+		Add(e1, e2): summExp (expToDoub(e1) ,  expToDoub(e2));
+		Mul(e1, e2): mulExp (expToDoub(e1) ,  expToDoub(e2));
+		Div(e1, e2): divExp (expToDoub(e1) ,  expToDoub(e2));
+		Min(e1, e2): minExp (expToDoub(e1) ,  expToDoub(e2));
+		Degree (e1, e2): degreeExp (expToDoub(e1) ,  expToDoub(e2));
+		Var (var): Some(Doub(either(lookupTree(vars, var), 0), 1));
+		Int(val): Some(Doub(val, 1));	
+		Doub(e1, e2): Some(Doub(e1, e2));
+	}
+}
+
+
+/*findVar (name : string ) -> Some<Doub> {
+	a = either(lookupTree(vars, name), 0);
+	Some(Doub(a, 1));
+}*/
+
+summExp(value1 : Maybe<Doub>, value2 : Maybe<Doub>) -> Maybe<Doub> {
+		x = checkVar(value1);
+        y = checkVar(value2);
+        topVal = x.e1 * y.e2 + y.e1 * x.e2;
+        botVal = x.e2 * y.e2;
+        Some(Doub(topVal, botVal));
+}
+
+minExp(value1 : Maybe<Doub>, value2 : Maybe<Doub>) -> Maybe<Doub> {
+		x = checkVar(value1);
+        y = checkVar(value2);
+        topVal = x.e1 * y.e2 - y.e1 * x.e2;
+        botVal = x.e2 * y.e2;
+        Some(Doub(topVal, botVal));
+}
+
+divExp(value1 : Maybe<Doub>, value2 : Maybe<Doub>) -> Maybe<Doub> {
+		x = checkVar(value1);
+        y = checkVar(value2);
+        topVal = x.e1 * y.e2 ;
+        botVal = x.e2 * y.e1;
+        Some(Doub(topVal, botVal));
+}
+
+mulExp(value1 : Maybe<Doub>, value2 : Maybe<Doub>) -> Maybe<Doub> {
+		x = checkVar(value1);
+        y = checkVar(value2);
+        topVal = x.e1 * y.e1 ;
+        botVal = x.e2 * y.e2;
+        Some(Doub(topVal, botVal));
+}
+
+degreeExp(value1 : Maybe<Doub>, value2 : Maybe<Doub>) -> Maybe<Doub> {
+		x = checkVar(value1);
+        y = checkVar(value2);
+        topVal = pow(x.e1, y.e1);
+        botVal = pow(x.e2, y.e1);
+        Some(Doub(topVal, botVal));
+}
+
+
+stringToExp(str : string) -> Exp {
+	e_gr = "#include Labs/9lab/grammar.lingo";
+	parsic(compilePegGrammar(e_gr), str, defaultPegActions);
+}
+
+
+main() {
+	expr_str = "(((b/a) ^ 2 )- 7)";
+	println(expr_str);
+	ast = stringToExp(expr_str);
+	println(resToStr(expToDoub(ast)));
+//	println(expTostring(ast));
+	quit(0);
+
+}
+
+	
